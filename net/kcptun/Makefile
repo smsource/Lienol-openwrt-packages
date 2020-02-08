@@ -1,73 +1,81 @@
+#
+# Copyright (C) 2015-2016 OpenWrt.org
+#
+# This is free software, licensed under the GNU General Public License v3.
+#
+
 include $(TOPDIR)/rules.mk
 
+ifeq ($(ARCH),x86_64)
+	PKG_ARCH_KCPTUN:=amd64
+endif
+ifeq ($(ARCH),mipsel)
+	PKG_ARCH_KCPTUN:=mipsle
+endif
+ifeq ($(ARCH),mips)
+	PKG_ARCH_KCPTUN:=mips
+endif
+ifeq ($(ARCH),i386)
+	PKG_ARCH_KCPTUN:=386
+endif
+ifeq ($(ARCH),arm)
+	PKG_ARCH_KCPTUN:=arm7
+endif
+ifeq ($(BOARD),bcm53xx)
+	PKG_ARCH_KCPTUN:=arm6
+endif
+ifeq ($(BOARD),kirkwood)
+	PKG_ARCH_KCPTUN:=arm5
+endif
+ifeq ($(ARCH),aarch64)
+	PKG_ARCH_KCPTUN:=arm64
+endif
+
 PKG_NAME:=kcptun
-PKG_VERSION:=20200103
-PKG_RELEASE:=1
-
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/xtaci/kcptun/tar.gz/v${PKG_VERSION}?
-PKG_SOURCE_DATE:=2020-01-03
-PKG_HASH:=620d4cd3ed1660e71b0fe1041c063e8fb38dc3aa7a6c78f6570e812566f44bb5
-
-PKG_MAINTAINER:=Dengfeng Liu <liudf0716@gmail.com>, Chao Liu <expiron18@gmail.com>
-PKG_LICENSE:=MIT
-PKG_LICENSE_FILES:=LICENSE.md
-
-PKG_BUILD_DEPENDS:=golang/host
-PKG_BUILD_PARALLEL:=1
-PKG_USE_MIPS16:=0
-
-GO_PKG:=github.com/xtaci/kcptun
-
-GO_PKG_LDFLAGS:=-s -w
-GO_PKG_LDFLAGS_X:=main.VERSION=$(PKG_VERSION)
+PKG_VERSION:=20200201
+PKG_RELEASE:=2
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
+PKG_SOURCE:=kcptun-linux-$(PKG_ARCH_KCPTUN)-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://github.com/xtaci/kcptun/releases/download/v$(PKG_VERSION)
+PKG_HASH:=skip
 
 include $(INCLUDE_DIR)/package.mk
-include ../../lang/golang/golang-package.mk
 
-define Package/kcptun-config
-  SECTION:=net
-  CATEGORY:=Network
-  SUBMENU:=Web Servers/Proxies
-  TITLE:=Kcptun Config Scripts
-  URL:=https://github.com/xtaci/kcptun
-  DEPENDS:=$(GO_ARCH_DEPENDS)
+define Package/$(PKG_NAME)-client
+	SECTION:=net
+	CATEGORY:=Network
+	TITLE:=Kcptun is a cross-platform proxy software
+	DEPENDS:=
+	URL:=https://github.com/xtaci/kcptun
 endef
 
-define Package/kcptun-config/install
-	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) ./files/kcptun.config $(1)/etc/config/kcptun
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/kcptun.init $(1)/etc/init.d/kcptun
+define Package/$(PKG_NAME)-server
+	SECTION:=net
+	CATEGORY:=Network
+	TITLE:=Kcptun is a cross-platform proxy software
+	DEPENDS:=
+	URL:=https://github.com/xtaci/kcptun
 endef
 
-define Package/kcptun/Default
-  define Package/kcptun-$(1)
-    SECTION:=net
-    CATEGORY:=Network
-    SUBMENU:=Web Servers/Proxies
-    TITLE:=KCP-based Secure Tunnel $(1)
-    URL:=https://github.com/xtaci/kcptun
-    DEPENDS:=+kcptun-config
-  endef
-
-  define Package/kcptun-$(1)/description
-    kcptun is a Stable & Secure Tunnel Based On KCP with N:M Multiplexing.
-This package only contains kcptun $(1).
-  endef
-
-  define Package/kcptun-$(1)/install
-		$$(call GoPackage/Package/Install/Bin,$$(PKG_INSTALL_DIR))
-
-		$$(INSTALL_DIR) $$(1)/usr/bin
-		$$(INSTALL_BIN) $$(PKG_INSTALL_DIR)/usr/bin/$(1) $$(1)/usr/bin/kcptun-$(1)
-  endef
+define Build/Prepare
+	tar -xzvf $(DL_DIR)/$(PKG_SOURCE) -C $(PKG_BUILD_DIR)
 endef
 
-$(eval $(call BuildPackage,kcptun-config))
-KCPTUN_COMPONENTS:=server client
-$(foreach component,$(KCPTUN_COMPONENTS), \
-  $(eval $(call Package/kcptun/Default,$(component))) \
-  $(eval $(call GoBinPackage,kcptun-$(component))) \
-  $(eval $(call BuildPackage,kcptun-$(component))) \
-)
+define Build/Configure
+endef
+
+define Build/Compile
+endef
+
+define Package/$(PKG_NAME)-client/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/client_linux_$(PKG_ARCH_KCPTUN) $(1)/usr/bin/kcptun-client
+endef
+
+define Package/$(PKG_NAME)-server/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/server_linux_$(PKG_ARCH_KCPTUN) $(1)/usr/bin/kcptun-server
+endef
+
+$(eval $(call BuildPackage,$(PKG_NAME)-client))
+$(eval $(call BuildPackage,$(PKG_NAME)-server))
